@@ -15,3 +15,8 @@ variable "location" {
   type        = string
   default     = "indiasouthcentral"
 }
+variable "alert_email" {
+  description = "Email nhận cảnh báo sự cố hệ thống"
+  type        = string
+  default     = "thaintd12@gmail.com"
+}

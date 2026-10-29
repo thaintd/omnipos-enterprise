@@ -48,3 +48,14 @@ module "compute" {
   key_vault_id        = module.security_data.key_vault_id
   sql_server_fqdn     = module.security_data.sql_server_fqdn
 }
+# 4. Lắp ghép Khối Giám sát & Cảnh báo (Nhận ID máy chủ từ Đội Compute)
+module "monitoring" {
+  source              = "./modules/monitoring"
+  project_name        = var.project_name
+  environment         = var.environment
+  location            = azurerm_resource_group.rg_main.location
+  resource_group_name = azurerm_resource_group.rg_main.name
+
+  webapp_id           = module.compute.webapp_id
+  alert_email         = var.alert_email
+}
