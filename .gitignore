@@ -1,0 +1,10 @@
+# Bỏ qua thư mục bộ nhớ đệm và file trạng thái chứa mật khẩu của Terraform
+**/.terraform/*
+*.tfstate
+*.tfstate.*
+*.tfvars
+tfplan
+
+# Bỏ qua thư mục thư viện Node.js
+node_modules/
+.env
