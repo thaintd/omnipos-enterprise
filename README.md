@@ -26,29 +26,29 @@ flowchart TB
 
     subgraph GitHub ["⚙️ Hệ thống Quản lý Mã nguồn & CI/CD"]
         Repo["GitHub Monorepo"]
-        Actions["GitHub Actions Pipeline\n(Build + Trivy Scan + Release)"]
-        TFState["Azure Blob Storage\n(Terraform Remote State + Locking)"]
+        Actions["GitHub Actions Pipeline<br/>Build + Trivy Scan + Release"]
+        TFState["Azure Blob Storage<br/>Terraform Remote State + Locking"]
     end
 
-    subgraph Azure ["☁️ Hạ tầng Microsoft Azure (VNet: 10.0.0.0/16)"]
-        WAF["Azure Front Door / WAF\n(Lọc HTTPS & Chống DDoS)"]
+    subgraph Azure ["☁️ Hạ tầng Microsoft Azure - VNet: 10.0.0.0/16"]
+        WAF["Azure Front Door / WAF<br/>Lọc HTTPS & Chống DDoS"]
 
-        subgraph AppSubnet ["Tầng Ứng dụng: snet-app-tier (10.0.1.0/24)"]
-            ProdApp["App Service (PRODUCTION)\nChạy Container v1"]
-            StageApp["App Service (STAGING SLOT)\nKiểm thử Container v2"]
+        subgraph AppSubnet ["Tầng Ứng dụng: snet-app-tier - 10.0.1.0/24"]
+            ProdApp["App Service PRODUCTION<br/>Chạy Container v1"]
+            StageApp["App Service STAGING SLOT<br/>Kiểm thử Container v2"]
             ProdApp <-->|"Zero-Downtime Swap"| StageApp
         end
 
-        subgraph DataSubnet ["Tầng Dữ liệu Kín: snet-data-tier (10.0.2.0/24) - Cấm Internet"]
-            PE_ACR["Private Endpoint"] --> ACR["Azure Container Registry\n(Lưu trữ Docker Image)"]
-            PE_SQL["Private Endpoint"] --> SQL["Azure SQL Database\n(Lưu trữ Đơn hàng)"]
-            PE_KV["Private Endpoint"] --> KV["Azure Key Vault\n(Lưu Chuỗi kết nối & Bí mật)"]
+        subgraph DataSubnet ["Tầng Dữ liệu Kín: snet-data-tier - 10.0.2.0/24 - Cấm Internet"]
+            PE_ACR["Private Endpoint"] --> ACR["Azure Container Registry<br/>Lưu trữ Docker Image"]
+            PE_SQL["Private Endpoint"] --> SQL["Azure SQL Database<br/>Lưu trữ Đơn hàng"]
+            PE_KV["Private Endpoint"] --> KV["Azure Key Vault<br/>Lưu Chuỗi kết nối & Bí mật"]
         end
 
-        Monitor["Azure Monitor & Log Analytics\n(Giám sát CPU/RAM/HTTP 5xx & Cảnh báo)"]
+        Monitor["Azure Monitor & Log Analytics<br/>Giám sát CPU/RAM/HTTP 5xx & Cảnh báo"]
     end
 
-    User -->|"HTTPS (443)"| WAF
+    User -->|"HTTPS 443"| WAF
     WAF --> ProdApp
     ProdApp -->|"VNet Integration + Managed Identity"| PE_SQL
     ProdApp -->|"Đọc Secret không mật khẩu"| PE_KV
