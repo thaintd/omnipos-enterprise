@@ -6,7 +6,7 @@
 ![GitHub Actions](https://img.shields.io/badge/CI%2FCD-GitHub_Actions-2088FF?logo=githubactions)
 ![Security](https://img.shields.io/badge/Security-Zero_Trust_%26_Trivy-success)
 
-## 1. Tổng quan Dự án (Summary)
+## 1. Tổng quan Dự án (Executive Summary)
 **OmniPOS Enterprise** là dự án hạ tầng đám mây và dây chuyền DevSecOps hoàn chỉnh cho hệ thống Backend Quản lý Đơn hàng & Tồn kho (POS). Dự án giải quyết 4 bài toán sống còn của doanh nghiệp bán lẻ:
 * **Zero-Downtime Deployment:** Triển khai phiên bản mới vào giờ cao điểm không gây gián đoạn giao dịch tại quầy (Blue-Green Deployment qua Azure App Service Slots).
 * **Zero-Trust Network & Passwordless:** Cô lập hoàn toàn Database, Key Vault và Container Registry trong mạng nội bộ thông qua **Private Endpoints**. Loại bỏ 100% mật khẩu tĩnh bằng **Managed Identity (RBAC)**.
