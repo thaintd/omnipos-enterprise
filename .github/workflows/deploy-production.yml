@@ -1,0 +1,91 @@
+name: OmniPOS DevSecOps Pipeline (Staging -> Swap Prod)
+
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch: # Cho phép bấm nút chạy thủ công trên giao diện GitHub
+
+# Khai báo các biến dùng chung cho toàn bộ Pipeline (Lấy từ terraform output)
+env:
+  AZURE_RESOURCE_GROUP: "rg-omnipos-prod"
+  ACR_NAME: "acromniposprodo1d2z"          # Ví dụ: acromniposproda8f2k (Chỉ lấy phần tên trước chữ .azurecr.io)
+  WEBAPP_NAME: "app-omnipos-prod-8vifm"    # Ví dụ: app-omnipos-prod-x9k2m
+  IMAGE_NAME: "omnipos-api"
+
+jobs:
+  # ============================================================================
+  # GIAI ĐOẠN 1: ĐÓNG GÓI, QUÉT BẢO MẬT TRIVY & TRIỂN KHAI LÊN MÁY PHỤ (STAGING)
+  # ============================================================================
+  build-scan-and-stage:
+    name: "1. Build, Trivy Scan & Deploy to Staging"
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Tải mã nguồn từ GitHub
+        uses: actions/checkout@v4
+
+      - name: Đóng gói Docker Image từ thư mục src/
+        run: |
+          docker build -t ${{ env.ACR_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ github.sha }} ./src
+
+      - name: 🛡️ Quét lỗ hổng bảo mật Container bằng Trivy (Shift-Left Security)
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: '${{ env.ACR_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ github.sha }}'
+          format: 'table'
+          exit-code: '0' # Trong môi trường Lab để '0' để in bảng cảnh báo mà không chặn luồng; Thực tế đặt '1'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          severity: 'CRITICAL,HIGH'
+
+      - name: Đăng nhập vào Microsoft Azure
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Đẩy Image sạch lên kho chứa Azure ACR
+        run: |
+          az acr login --name ${{ env.ACR_NAME }}
+          docker push ${{ env.ACR_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ github.sha }}
+
+      - name: Cập nhật Image mới vào máy phụ STAGING SLOT
+        run: |
+          az webapp config container set \
+            --name ${{ env.WEBAPP_NAME }} \
+            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+            --slot staging \
+            --container-image-name ${{ env.ACR_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ github.sha }} \
+            --container-registry-url https://${{ env.ACR_NAME }}.azurecr.io
+
+      - name: 🩺 Kiểm tra sức khỏe tự động (Smoke Test) trên cổng /healthz của Staging
+        run: |
+          echo "Đợi 30 giây để máy chủ Staging kéo Image và khởi động..."
+          sleep 30
+          STAGING_URL="https://${{ env.WEBAPP_NAME }}-staging.azurewebsites.net/healthz"
+          echo "Đang kiểm tra: $STAGING_URL"
+          curl --fail --retry 5 --retry-delay 10 $STAGING_URL
+
+  # ============================================================================
+  # GIAI ĐOẠN 2: CHỜ DUYỆT TAY (MANUAL APPROVAL) & TRÁO ĐỔI LÊN PRODUCTION
+  # ============================================================================
+  swap-to-production:
+    name: "2. Approve & Zero-Downtime Swap to Production"
+    runs-on: ubuntu-latest
+    needs: build-scan-and-stage # Bắt buộc Giai đoạn 1 phải xanh mới được chạy Giai đoạn 2
+    environment:
+      name: production # Kích hoạt chốt chặn Manual Approval trên GitHub Environments
+      url: https://${{ env.WEBAPP_NAME }}.azurewebsites.net
+
+    steps:
+      - name: Đăng nhập vào Microsoft Azure
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: 🔄 Thực hiện Blue-Green Swap (Tráo đổi Staging <-> Production trong 0 giây)
+        run: |
+          az webapp deployment slot swap \
+            --name ${{ env.WEBAPP_NAME }} \
+            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+            --slot staging \
+            --target-slot production
